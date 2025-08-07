@@ -9,41 +9,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Serene Sky -->
-    <!-- Application Structure Plan: The application is structured as an interactive dashboard. The core design uses weekly tabs to break down the 8-week plan into manageable sections, preventing user overwhelm. This tabbed navigation is more intuitive than a long scroll. The key interaction is a checklist system; each daily task has a checkbox that, when clicked, updates a main progress bar and a donut chart. This provides immediate visual feedback and fosters a sense of accomplishment, which is crucial for maintaining a long-term study habit. Category filters are included to allow the user to focus their efforts (e.g., view only "DSA" tasks), transforming the static plan into a flexible study tool. This structure was chosen to make the plan actionable, trackable, and motivating. -->
-    <!-- Visualization & Content Choices: 
-        - Report Info: 56-day study schedule. Goal: Track daily progress and maintain motivation. Viz/Method: Interactive checklist with cards per day. Interaction: Clicking a checkbox. Justification: Directly makes the plan a usable tool.
-        - Report Info: Overall completion status. Goal: Visualize progress. Viz/Method: A prominent progress bar and a Chart.js donut chart. Interaction: Both are updated automatically when any checkbox is clicked. Justification: These are powerful motivational visuals that give the user a clear, at-a-glance understanding of their commitment and progress.
-        - Report Info: Task categories (Aptitude, DSA, etc.). Goal: Allow focused study sessions. Viz/Method: Filter buttons. Interaction: Clicking a button hides non-matching tasks. Justification: Adds a layer of personalization and control for the user.
-        - Library/Method: Vanilla JS for all logic (checkboxes, filters, updates). Chart.js for the progress donut chart. Tailwind CSS for all styling.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* slate-50 */
+            background-color: #f8fafc; /* Light gray background */
         }
         .task-card {
             transition: all 0.3s ease-in-out;
         }
         .task-card.completed {
-            background-color: #f0fdf4; /* green-50 */
-            border-left-color: #22c55e; /* green-500 */
+            background-color: #f0fdf4; /* Light green for completed tasks */
+            border-left-color: #22c55e; /* Green border */
         }
         .task-card.completed label {
             text-decoration: line-through;
-            color: #6b7280; /* gray-500 */
+            color: #6b7280; /* Gray out text for completed tasks */
         }
         .tab-btn {
             transition: all 0.2s ease;
         }
         .tab-btn.active {
-            background-color: #0ea5e9; /* sky-500 */
+            background-color: #0ea5e9; /* Sky blue for active tab */
             color: white;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
         .filter-btn.active {
-            background-color: #3b82f6; /* blue-500 */
+            background-color: #3b82f6; /* Blue for active filter */
             color: white;
         }
         .chart-container {
@@ -53,6 +44,14 @@
             height: 150px;
             margin-left: auto;
             margin-right: auto;
+        }
+        /* Style for the progress management section */
+        .progress-management-area {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        /* Hide the default file input */
+        .file-input {
+            display: none;
         }
     </style>
 </head>
@@ -65,12 +64,35 @@
             <p class="mt-2 text-lg text-slate-600">Track your daily progress and get ready for success.</p>
         </header>
 
+        <!-- Progress Management Section -->
+        <div class="progress-management-area p-6 rounded-2xl shadow-lg mb-8 text-white">
+            <h2 class="text-xl font-bold mb-4 text-center">Progress Management</h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button id="save-progress-btn" class="bg-white text-purple-600 px-6 py-2 rounded-full font-semibold hover:bg-purple-50 transition-colors">
+                    📥 Download Progress
+                </button>
+                <label for="load-progress-input" class="bg-white text-purple-600 px-6 py-2 rounded-full font-semibold hover:bg-purple-50 transition-colors cursor-pointer">
+                    📤 Upload Progress
+                </label>
+                <input type="file" id="load-progress-input" class="file-input" accept=".json">
+                <button id="reset-progress-btn" class="bg-red-500 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-600 transition-colors">
+                    🔄 Reset All
+                </button>
+            </div>
+            <p class="text-center mt-2 text-sm opacity-90">Save your progress as a file to keep it between sessions!</p>
+        </div>
+
+        <!-- Overall Progress Display -->
         <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
             <h2 class="text-xl font-bold mb-4 text-center">Overall Progress</h2>
             <div class="flex flex-col md:flex-row items-center justify-center gap-8">
                 <div class="w-full md:w-2/3">
                     <div class="w-full bg-slate-200 rounded-full h-8">
                         <div id="progress-bar" class="bg-sky-500 h-8 text-white font-bold flex items-center justify-center rounded-full transition-all duration-500" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="flex justify-between mt-2 text-sm text-slate-600">
+                        <span id="completed-count">0 completed</span>
+                        <span id="total-count">0 total tasks</span>
                     </div>
                 </div>
                 <div class="chart-container">
@@ -79,6 +101,7 @@
             </div>
         </div>
 
+        <!-- Filter Controls -->
         <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg mb-8">
             <h3 class="text-lg font-semibold mb-4 text-center">Filter by Category</h3>
             <div id="filter-container" class="flex flex-wrap justify-center gap-2">
@@ -92,8 +115,10 @@
             </div>
         </div>
         
+        <!-- Main Content: Weeks and Tasks -->
         <main>
             <div class="flex flex-wrap justify-center gap-2 mb-8" id="week-tabs">
+                <!-- Week tabs will be dynamically controlled by JS -->
                 <button class="tab-btn active py-2 px-5 rounded-full font-bold" data-week="1">Week 1</button>
                 <button class="tab-btn py-2 px-5 rounded-full font-bold bg-white" data-week="2">Week 2</button>
                 <button class="tab-btn py-2 px-5 rounded-full font-bold bg-white" data-week="3">Week 3</button>
@@ -107,69 +132,13 @@
             <div id="task-container">
                 <!-- Week 1 -->
                 <div id="week-1" class="week-content grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio">
-                        <div class="flex items-start">
-                            <input type="checkbox" id="day1" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300">
-                            <label for="day1" class="ml-3">
-                                <span class="font-bold text-lg">Day 1: Resume</span>
-                                <p class="text-slate-600">Draft the first version of your resume. Focus on contact info, education, and a skills section.</p>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio">
-                        <div class="flex items-start">
-                            <input type="checkbox" id="day2" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300">
-                            <label for="day2" class="ml-3">
-                                <span class="font-bold text-lg">Day 2: GitHub</span>
-                                <p class="text-slate-600">Set up your GitHub profile. Create a new repository for one of your old website projects and push the code.</p>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude">
-                        <div class="flex items-start">
-                            <input type="checkbox" id="day3" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300">
-                            <label for="day3" class="ml-3">
-                                <span class="font-bold text-lg">Day 3: Quant Aptitude</span>
-                                <p class="text-slate-600">Topic: Percentages. Learn the basics and solve 5-7 practice questions.</p>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="python">
-                        <div class="flex items-start">
-                            <input type="checkbox" id="day4" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300">
-                            <label for="day4" class="ml-3">
-                                <span class="font-bold text-lg">Day 4: Python</span>
-                                <p class="text-slate-600">Quick review of Python's built-in data structures (Lists, Dictionaries, Sets, Tuples) and when to use each.</p>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude">
-                        <div class="flex items-start">
-                            <input type="checkbox" id="day5" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300">
-                            <label for="day5" class="ml-3">
-                                <span class="font-bold text-lg">Day 5: Logical Reasoning</span>
-                                <p class="text-slate-600">Topic: Blood Relations. Understand the concepts and solve a few problems.</p>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio">
-                        <div class="flex items-start">
-                            <input type="checkbox" id="day6" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300">
-                            <label for="day6" class="ml-3">
-                                <span class="font-bold text-lg">Day 6: Resume</span>
-                                <p class="text-slate-600">Refine your resume. Write clear, bullet-point descriptions for your projects.</p>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio">
-                        <div class="flex items-start">
-                            <input type="checkbox" id="day7" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300">
-                            <label for="day7" class="ml-3">
-                                <span class="font-bold text-lg">Day 7: GitHub</span>
-                                <p class="text-slate-600">Write a good `README.md` file for your project on GitHub. Explain what the project does and the tech used.</p>
-                            </label>
-                        </div>
-                    </div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day1" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day1" class="ml-3"><span class="font-bold text-lg">Day 1: Resume</span><p class="text-slate-600">Draft the first version of your resume. Focus on contact info, education, and a skills section.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day2" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day2" class="ml-3"><span class="font-bold text-lg">Day 2: GitHub</span><p class="text-slate-600">Set up your GitHub profile. Create a new repository for one of your old website projects and push the code.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day3" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day3" class="ml-3"><span class="font-bold text-lg">Day 3: Quant Aptitude</span><p class="text-slate-600">Topic: Percentages. Learn the basics and solve 5-7 practice questions.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="python"><div class="flex items-start"><input type="checkbox" id="day4" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day4" class="ml-3"><span class="font-bold text-lg">Day 4: Python</span><p class="text-slate-600">Quick review of Python's built-in data structures (Lists, Dictionaries, Sets, Tuples) and when to use each.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day5" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day5" class="ml-3"><span class="font-bold text-lg">Day 5: Logical Reasoning</span><p class="text-slate-600">Topic: Blood Relations. Understand the concepts and solve a few problems.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day6" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day6" class="ml-3"><span class="font-bold text-lg">Day 6: Resume</span><p class="text-slate-600">Refine your resume. Write clear, bullet-point descriptions for your projects.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day7" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day7" class="ml-3"><span class="font-bold text-lg">Day 7: GitHub</span><p class="text-slate-600">Write a good `README.md` file for your project on GitHub. Explain what the project does and the tech used.</p></label></div></div>
                 </div>
                 <!-- Week 2 -->
                 <div id="week-2" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -181,7 +150,7 @@
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day13" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day13" class="ml-3"><span class="font-bold text-lg">Day 13: Quant Aptitude</span><p class="text-slate-600">Topic: Time & Work.</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day14" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day14" class="ml-3"><span class="font-bold text-lg">Day 14: DSA</span><p class="text-slate-600">Solve 2-3 more easy Array problems in Python.</p></label></div></div>
                 </div>
-                <!-- Week 3 -->
+                <!-- Weeks 3-8 are structured similarly... -->
                 <div id="week-3" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day15" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day15" class="ml-3"><span class="font-bold text-lg">Day 15: Logical Reasoning</span><p class="text-slate-600">Topic: Syllogisms.</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day16" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day16" class="ml-3"><span class="font-bold text-lg">Day 16: DSA</span><p class="text-slate-600">Topic: Linked Lists. Understand the concept and solve one problem.</p></label></div></div>
@@ -191,7 +160,6 @@
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="cs"><div class="flex items-start"><input type="checkbox" id="day20" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day20" class="ml-3"><span class="font-bold text-lg">Day 20: CS Fundamentals</span><p class="text-slate-600">Networks: Learn the layers of the OSI or TCP/IP model.</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day21" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day21" class="ml-3"><span class="font-bold text-lg">Day 21: Verbal Ability</span><p class="text-slate-600">Practice 10 synonym/antonym questions.</p></label></div></div>
                 </div>
-                <!-- Week 4 -->
                 <div id="week-4" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day22" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day22" class="ml-3"><span class="font-bold text-lg">Day 22: DSA</span><p class="text-slate-600">Topic: Stacks. Learn LIFO and solve one problem (e.g., valid parentheses).</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day23" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day23" class="ml-3"><span class="font-bold text-lg">Day 23: Quant Aptitude</span><p class="text-slate-600">Review your weak topics from Weeks 1-3.</p></label></div></div>
@@ -201,158 +169,134 @@
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day27" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day27" class="ml-3"><span class="font-bold text-lg">Day 27: DSA</span><p class="text-slate-600">Solve 2-3 problems that use Stacks or Queues.</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day28" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day28" class="ml-3"><span class="font-bold text-lg">Day 28: Review</span><p class="text-slate-600">Take 30 minutes to quickly go over all the concepts you've learned this month.</p></label></div></div>
                 </div>
-                <!-- Week 5 -->
-                <div id="week-5" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 <div id="week-5" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day29" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day29" class="ml-3"><span class="font-bold text-lg">Day 29: DSA</span><p class="text-slate-600">Trees: Learn about Binary Trees and traversal methods (In-order, Pre-order, Post-order).</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day30" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day30" class="ml-3"><span class="font-bold text-lg">Day 30: Interview Prep</span><p class="text-slate-600">Prepare an answer for "What are your greatest strengths and weaknesses?"</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day31" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day31" class="ml-3"><span class="font-bold text-lg">Day 31: DSA</span><p class="text-slate-600">Implement one of the tree traversal algorithms in Python.</p></label></div></div>
                     <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="cs"><div class="flex items-start"><input type="checkbox" id="day32" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day32" class="ml-3"><span class="font-bold text-lg">Day 32: CS Fundamentals</span><p class="text-slate-600">DBMS: Learn SQL Joins (INNER, LEFT, RIGHT, FULL).</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day33" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day33" class="ml-3"><span class="font-bold text-lg">Day 33: Quant Aptitude</span><p class="text-slate-600">Topic: Permutations & Combinations.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day34" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day34" class="ml-3"><span class="font-bold text-lg">Day 34: DSA</span><p class="text-slate-600">Binary Search Trees (BST): Understand properties and how to search for a value.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day35" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day35" class="ml-3"><span class="font-bold text-lg">Day 35: Interview Prep</span><p class="text-slate-600">Prepare an answer for "Why do you want to work for our company?"</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day33" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day33" class="ml-3"><span class="font-bold text-lg">Day 33: Quant Aptitude</span><p class="text-slate-600">Topic: Averages.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day34" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day34" class="ml-3"><span class="font-bold text-lg">Day 34: DSA</span><p class="text-slate-600">Solve 2-3 easy Tree problems.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="cs"><div class="flex items-start"><input type="checkbox" id="day35" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day35" class="ml-3"><span class="font-bold text-lg">Day 35: CS Fundamentals</span><p class="text-slate-600">OS: Learn about scheduling algorithms (FCFS, SJF).</p></label></div></div>
                 </div>
-                <!-- Week 6 -->
                 <div id="week-6" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day36" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day36" class="ml-3"><span class="font-bold text-lg">Day 36: DSA</span><p class="text-slate-600">Graphs: Learn basics (vertices, edges) and difference between BFS and DFS.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day37" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day37" class="ml-3"><span class="font-bold text-lg">Day 37: GD Prep</span><p class="text-slate-600">Read the headlines and one editorial from a major news source to stay updated.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day38" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day38" class="ml-3"><span class="font-bold text-lg">Day 38: DSA</span><p class="text-slate-600">Implement BFS or DFS for a simple graph.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="cs"><div class="flex items-start"><input type="checkbox" id="day39" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day39" class="ml-3"><span class="font-bold text-lg">Day 39: CS Fundamentals</span><p class="text-slate-600">OS: Read about basic Memory Management concepts (e.g., Paging).</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day40" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day40" class="ml-3"><span class="font-bold text-lg">Day 40: Logical Reasoning</span><p class="text-slate-600">Topic: Puzzles.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day41" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day41" class="ml-3"><span class="font-bold text-lg">Day 41: GD Prep</span><p class="text-slate-600">Pick a common topic and write down 3 points for and 3 points against.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day42" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day42" class="ml-3"><span class="font-bold text-lg">Day 42: DSA</span><p class="text-slate-600">Solve 1-2 easy Graph problems.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day36" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day36" class="ml-3"><span class="font-bold text-lg">Day 36: DSA</span><p class="text-slate-600">Graphs: Understand basic graph representations (Adjacency List, Adjacency Matrix).</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day37" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day37" class="ml-3"><span class="font-bold text-lg">Day 37: Logical Reasoning</span><p class="text-slate-600">Topic: Data Sufficiency.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day38" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day38" class="ml-3"><span class="font-bold text-lg">Day 38: DSA</span><p class="text-slate-600">Graphs: Learn Breadth-First Search (BFS) and solve one problem.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day39" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day39" class="ml-3"><span class="font-bold text-lg">Day 39: Interview Prep</span><p class="text-slate-600">Prepare answers for common questions about your projects.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day40" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day40" class="ml-3"><span class="font-bold text-lg">Day 40: DSA</span><p class="text-slate-600">Graphs: Learn Depth-First Search (DFS) and solve one problem.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="cs"><div class="flex items-start"><input type="checkbox" id="day41" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day41" class="ml-3"><span class="font-bold text-lg">Day 41: CS Fundamentals</span><p class="text-slate-600">Networks: What happens when you type google.com in your browser?</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day42" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day42" class="ml-3"><span class="font-bold text-lg">Day 42: Mock Test</span><p class="text-slate-600">Take a 30-minute aptitude mock test online.</p></label></div></div>
                 </div>
-                <!-- Week 7 -->
-                <div id="week-7" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day43" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day43" class="ml-3"><span class="font-bold text-lg">Day 43: Mock Test</span><p class="text-slate-600">Take a 30-minute timed aptitude test (mix of Quant, Logic, Verbal).</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="python"><div class="flex items-start"><input type="checkbox" id="day44" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day44" class="ml-3"><span class="font-bold text-lg">Day 44: Python</span><p class="text-slate-600">Review core Python concepts. Explain OOP concepts to yourself.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day45" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day45" class="ml-3"><span class="font-bold text-lg">Day 45: DSA</span><p class="text-slate-600">Solve one medium-level problem that combines two data structures.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day46" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day46" class="ml-3"><span class="font-bold text-lg">Day 46: Mock Interview</span><p class="text-slate-600">Record yourself answering "Tell me about yourself" and explaining one project.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day47" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day47" class="ml-3"><span class="font-bold text-lg">Day 47: Mock Test</span><p class="text-slate-600">Review the mistakes from Day 43's test and try another one.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="cs"><div class="flex items-start"><input type="checkbox" id="day48" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day48" class="ml-3"><span class="font-bold text-lg">Day 48: CS Fundamentals</span><p class="text-slate-600">Quickly review all your notes on DBMS, OS, and Networks.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day49" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day49" class="ml-3"><span class="font-bold text-lg">Day 49: DSA</span><p class="text-slate-600">Solve one medium-level problem from your weakest DSA topic.</p></label></div></div>
+                 <div id="week-7" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day43" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day43" class="ml-3"><span class="font-bold text-lg">Day 43: Mock Interview</span><p class="text-slate-600">Have a friend ask you HR questions. Practice your answers out loud.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day44" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day44" class="ml-3"><span class="font-bold text-lg">Day 44: DSA</span><p class="text-slate-600">Solve 2 medium problems from any topic you found difficult.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day45" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day45" class="ml-3"><span class="font-bold text-lg">Day 45: LinkedIn</span><p class="text-slate-600">Update your LinkedIn profile. Make sure it matches your new resume.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day46" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day46" class="ml-3"><span class="font-bold text-lg">Day 46: Company Research</span><p class="text-slate-600">Pick 3 companies you want to apply to and research their products and values.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day47" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day47" class="ml-3"><span class="font-bold text-lg">Day 47: DSA</span><p class="text-slate-600">Review all DSA topics. Make short notes for last-minute revision.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="cs"><div class="flex items-start"><input type="checkbox" id="day48" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day48" class="ml-3"><span class="font-bold text-lg">Day 48: CS Fundamentals</span><p class="text-slate-600">Review all CS topics. Focus on the ones you see most in interview experiences.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day49" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day49" class="ml-3"><span class="font-bold text-lg">Day 49: Apply!</span><p class="text-slate-600">Start applying to jobs! Aim for 3-5 quality applications.</p></label></div></div>
                 </div>
-                <!-- Week 8 -->
-                <div id="week-8" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day50" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day50" class="ml-3"><span class="font-bold text-lg">Day 50: Final Review</span><p class="text-slate-600">Read through your resume and GitHub profiles one last time. Check for typos.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day51" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day51" class="ml-3"><span class="font-bold text-lg">Day 51: Timed Coding</span><p class="text-slate-600">Try to solve 2 easy LeetCode problems in 30 minutes.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day52" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day52" class="ml-3"><span class="font-bold text-lg">Day 52: HR Questions</span><p class="text-slate-600">Review your prepared answers for common HR questions.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="aptitude"><div class="flex items-start"><input type="checkbox" id="day53" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day53" class="ml-3"><span class="font-bold text-lg">Day 53: Timed Aptitude</span><p class="text-slate-600">Pick your weakest aptitude section and do a 30-minute focused practice.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day54" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day54" class="ml-3"><span class="font-bold text-lg">Day 54: Project Review</span><p class="text-slate-600">Practice explaining your projects and your specific role in them.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day55" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day55" class="ml-3"><span class="font-bold text-lg">Day 55: Company Research</span><p class="text-slate-600">If you have a specific company in mind, spend 30 minutes on their website.</p></label></div></div>
-                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day56" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day56" class="ml-3"><span class="font-bold text-lg">Day 56: Rest & Relax</span><p class="text-slate-600">You've worked hard. Confidence is your biggest asset now. Go over notes lightly.</p></label></div></div>
+                 <div id="week-8" class="week-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day50" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day50" class="ml-3"><span class="font-bold text-lg">Day 50: Mock Technical Interview</span><p class="text-slate-600">Ask a senior or friend to take a 30-minute technical interview. Solve one DSA problem on screen.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day51" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day51" class="ml-3"><span class="font-bold text-lg">Day 51: Apply!</span><p class="text-slate-600">Apply to 5 more companies.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="dsa"><div class="flex items-start"><input type="checkbox" id="day52" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day52" class="ml-3"><span class="font-bold text-lg">Day 52: DSA Practice</span><p class="text-slate-600">Solve one medium/hard problem from a company's recently asked list.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day53" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day53" class="ml-3"><span class="font-bold text-lg">Day 53: Follow Up</span><p class="text-slate-600">Draft a polite follow-up email template for applications you haven't heard back from.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day54" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day54" class="ml-3"><span class="font-bold text-lg">Day 54: Apply!</span><p class="text-slate-600">Apply to 5 more companies.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="interview"><div class="flex items-start"><input type="checkbox" id="day55" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day55" class="ml-3"><span class="font-bold text-lg">Day 55: Relax</span><p class="text-slate-600">Take a break. You've worked hard. Avoid burnout before interviews start.</p></label></div></div>
+                    <div class="task-card bg-white p-5 rounded-lg shadow-md border-l-4 border-slate-300" data-category="portfolio"><div class="flex items-start"><input type="checkbox" id="day56" class="task-checkbox h-5 w-5 rounded text-sky-500 focus:ring-sky-500 mt-1 border-slate-300"><label for="day56" class="ml-3"><span class="font-bold text-lg">Day 56: Final Review</span><p class="text-slate-600">Review your resume, key projects, and CS/DSA notes one last time.</p></label></div></div>
                 </div>
             </div>
         </main>
-
-        <footer class="mt-12 text-center">
-            <h3 class="text-2xl font-bold mb-4">Recommended Resources</h3>
-            <div class="flex justify-center items-center gap-6 flex-wrap">
-                <a href="https://www.indiabix.com/" target="_blank" class="text-sky-600 hover:text-sky-800 font-semibold">IndiaBIX</a>
-                <a href="https://www.geeksforgeeks.org/" target="_blank" class="text-sky-600 hover:text-sky-800 font-semibold">GeeksforGeeks</a>
-                <a href="https://leetcode.com/" target="_blank" class="text-sky-600 hover:text-sky-800 font-semibold">LeetCode</a>
-                <a href="https://www.hackerrank.com/" target="_blank" class="text-sky-600 hover:text-sky-800 font-semibold">HackerRank</a>
-                <a href="https://www.tutorialspoint.com/index.htm" target="_blank" class="text-sky-600 hover:text-sky-800 font-semibold">TutorialsPoint</a>
-            </div>
-        </footer>
-
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element Selectors ---
             const checkboxes = document.querySelectorAll('.task-checkbox');
+            const totalCountSpan = document.getElementById('total-count');
+            const completedCountSpan = document.getElementById('completed-count');
             const progressBar = document.getElementById('progress-bar');
-            const weekTabs = document.getElementById('week-tabs');
+            const weekTabsContainer = document.getElementById('week-tabs');
             const weekContents = document.querySelectorAll('.week-content');
             const filterContainer = document.getElementById('filter-container');
             const taskCards = document.querySelectorAll('.task-card');
+            
+            // --- Progress Management Buttons ---
+            const saveBtn = document.getElementById('save-progress-btn');
+            const loadInput = document.getElementById('load-progress-input');
+            const resetBtn = document.getElementById('reset-progress-btn');
 
-            const totalTasks = checkboxes.length;
-            let progressChart;
-
-            function updateProgress() {
-                const checkedTasks = document.querySelectorAll('.task-checkbox:checked').length;
-                const percentage = totalTasks > 0 ? Math.round((checkedTasks / totalTasks) * 100) : 0;
-                
-                progressBar.style.width = percentage + '%';
-                progressBar.textContent = percentage + '%';
-
-                if (percentage === 100) {
-                    progressBar.classList.add('bg-green-500');
-                    progressBar.classList.remove('bg-sky-500');
-                } else {
-                    progressBar.classList.add('bg-sky-500');
-                    progressBar.classList.remove('bg-green-500');
+            // --- Chart.js Initialization ---
+            const ctx = document.getElementById('progress-chart').getContext('2d');
+            let progressChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Remaining'],
+                    datasets: [{
+                        data: [0, checkboxes.length],
+                        backgroundColor: ['#0ea5e9', '#e2e8f0'],
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
                 }
-                
-                updateChart(checkedTasks, totalTasks - checkedTasks);
-                
-                checkboxes.forEach(checkbox => {
-                    const card = checkbox.closest('.task-card');
-                    if (checkbox.checked) {
+            });
+
+            // --- Main Update Function ---
+            // This function runs every time a change is made.
+            function updateAllUI() {
+                const completedTasks = document.querySelectorAll('.task-checkbox:checked').length;
+                const totalTasks = checkboxes.length;
+                const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+                // 1. Update Progress Bar
+                progressBar.style.width = `${percentage}%`;
+                progressBar.textContent = `${percentage}%`;
+
+                // 2. Update Text Counts
+                completedCountSpan.textContent = `${completedTasks} completed`;
+                totalCountSpan.textContent = `${totalTasks} total tasks`;
+
+                // 3. Update Card Styles
+                checkboxes.forEach(cb => {
+                    const card = cb.closest('.task-card');
+                    if (cb.checked) {
                         card.classList.add('completed');
                     } else {
                         card.classList.remove('completed');
                     }
                 });
-            }
-            
-            function createChart() {
-                const ctx = document.getElementById('progress-chart').getContext('2d');
-                progressChart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Completed', 'Remaining'],
-                        datasets: [{
-                            data: [0, totalTasks],
-                            backgroundColor: [
-                                '#22c55e', // green-500
-                                '#e2e8f0'  // slate-200
-                            ],
-                            borderColor: '#f8fafc', // slate-50
-                            borderWidth: 4,
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '70%',
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                enabled: true
-                            }
-                        }
-                    }
-                });
+
+                // 4. Update Doughnut Chart
+                progressChart.data.datasets[0].data[0] = completedTasks;
+                progressChart.data.datasets[0].data[1] = totalTasks - completedTasks;
+                progressChart.update();
             }
 
-            function updateChart(completed, remaining) {
-                if (progressChart) {
-                    progressChart.data.datasets[0].data[0] = completed;
-                    progressChart.data.datasets[0].data[1] = remaining;
-                    progressChart.update();
-                }
-            }
+            // --- Event Listeners ---
 
+            // Listen for changes on any checkbox
             checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', updateProgress);
+                checkbox.addEventListener('change', updateAllUI);
             });
 
-            weekTabs.addEventListener('click', (e) => {
+            // Week Tab Switching Logic
+            weekTabsContainer.addEventListener('click', (e) => {
                 if (e.target.tagName === 'BUTTON') {
                     const targetWeek = e.target.dataset.week;
-                    
-                    weekTabs.querySelectorAll('button').forEach(btn => {
-                        btn.classList.remove('active');
-                        btn.classList.add('bg-white');
-                    });
-                    
+
+                    // Update button styles
+                    weekTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
                     e.target.classList.add('active');
-                    e.target.classList.remove('bg-white');
-                    
+
+                    // Show/hide week content
                     weekContents.forEach(content => {
                         if (content.id === `week-${targetWeek}`) {
                             content.classList.remove('hidden');
@@ -363,13 +307,16 @@
                 }
             });
 
+            // Category Filtering Logic
             filterContainer.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
+                 if (e.target.tagName === 'BUTTON') {
                     const filter = e.target.dataset.filter;
 
-                    filterContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                    // Update filter button styles
+                    filterContainer.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                     e.target.classList.add('active');
 
+                    // Show/hide task cards based on category
                     taskCards.forEach(card => {
                         if (filter === 'all' || card.dataset.category === filter) {
                             card.style.display = 'block';
@@ -380,8 +327,67 @@
                 }
             });
             
-            createChart();
-            updateProgress();
+            // --- Progress Management Functions ---
+
+            // 1. Save Progress to a JSON file
+            function saveProgress() {
+                const progressData = {};
+                checkboxes.forEach(cb => {
+                    progressData[cb.id] = cb.checked;
+                });
+
+                const blob = new Blob([JSON.stringify(progressData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'job_prep_progress.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // 2. Load Progress from a JSON file
+            function loadProgress(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const progressData = JSON.parse(e.target.result);
+                        checkboxes.forEach(cb => {
+                            if (progressData[cb.id] !== undefined) {
+                                cb.checked = progressData[cb.id];
+                            }
+                        });
+                        updateAllUI(); // Refresh the entire UI after loading
+                    } catch (error) {
+                        console.error("Error parsing progress file:", error);
+                        alert("Could not load progress. The file may be corrupted.");
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // 3. Reset All Progress
+            function resetProgress() {
+                if (confirm("Are you sure you want to reset all your progress? This cannot be undone.")) {
+                    checkboxes.forEach(cb => {
+                        cb.checked = false;
+                    });
+                    updateAllUI();
+                }
+            }
+
+            // Attach functions to buttons
+            saveBtn.addEventListener('click', saveProgress);
+            loadInput.addEventListener('change', loadProgress);
+            resetBtn.addEventListener('click', resetProgress);
+
+            // --- Initial Load ---
+            // Run once on page load to set the initial state
+            updateAllUI();
         });
     </script>
 </body>
